@@ -1,21 +1,27 @@
 package org.example.smartcareer.entite;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
 @Data
 public class CvAnalysis {
+
     @Id
-    @GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long cvId;         
     private Long userId;
+
+    @Column(columnDefinition = "TEXT")
     private String extractedSkills;
-    private String extractedExperience;
+
+    @Column(columnDefinition = "TEXT")
     private String extractedEducation;
+
+    @Column(columnDefinition = "TEXT")
+    private String extractedExperience;
+
+    private String chromaId;
 }
-
-
