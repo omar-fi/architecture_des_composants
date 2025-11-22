@@ -54,11 +54,10 @@ public class CvServiceImpl implements CvService {
     public Cv uploadCv(Long userId, MultipartFile file) {
         try {
 
-            // 1) Vérification User
+         
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // 2) Sauvegarde du fichier PDF
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
 
@@ -66,7 +65,7 @@ public class CvServiceImpl implements CvService {
             Path filePath = uploadPath.resolve(fileName);
             Files.write(filePath, file.getBytes());
 
-            // 3) Sauvegarde CV MySQL
+          
             Cv cv = new Cv();
             cv.setFileName(fileName);
             cv.setFilePath(filePath.toString());
@@ -75,7 +74,7 @@ public class CvServiceImpl implements CvService {
 
             Cv savedCv = cvRepository.save(cv);
 
-            // 4) Analyse IA
+          
             analyzeCv(savedCv);
 
             return savedCv;
@@ -89,9 +88,6 @@ public class CvServiceImpl implements CvService {
         try {
             String filePath = cv.getFilePath();
 
-            // ---------------------------
-            // STEP 1: EXTRACTION
-            // ---------------------------
             CvExtractRequest extractReq = new CvExtractRequest();
             extractReq.setFile_path(filePath);
 
@@ -111,9 +107,6 @@ public class CvServiceImpl implements CvService {
                 return;
             }
 
-            // ---------------------------
-            // STEP 2: ANALYSE NLP
-            // ---------------------------
             CvAnalysisRequest analysisReq = new CvAnalysisRequest();
             analysisReq.setText(extractedText);
 
@@ -130,9 +123,6 @@ public class CvServiceImpl implements CvService {
                 return;
             }
 
-            // ---------------------------
-            // STEP 3: VECTORISATION
-            // ---------------------------
             CvVectorizationRequest vectorReq = new CvVectorizationRequest();
             vectorReq.setCvId(cv.getId());
             vectorReq.setText(extractedText);
@@ -150,9 +140,7 @@ public class CvServiceImpl implements CvService {
                 return;
             }
 
-            // ---------------------------
-            // SAVE INTO DATABASE
-            // ---------------------------
+         
             CvAnalysis result = new CvAnalysis();
             result.setCvId(cv.getId());
             result.setUserId(cv.getUserId());
