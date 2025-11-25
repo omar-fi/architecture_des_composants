@@ -69,11 +69,24 @@ const DashboardPage = (): JSX.Element => {
       // Rafraîchir la liste des CVs
       await fetchCvs();
     } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-        err.response?.data ||
-        "Erreur lors du téléchargement du CV"
-      );
+      console.error("Erreur upload CV:", err);
+      let errorMessage = "Erreur lors du téléchargement du CV";
+      
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data.error) {
+          errorMessage = err.response.data.error;
+        } else {
+          errorMessage = JSON.stringify(err.response.data);
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setUploading(false);
     }

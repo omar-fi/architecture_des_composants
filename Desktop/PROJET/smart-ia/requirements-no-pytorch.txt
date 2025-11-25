@@ -1,0 +1,19 @@
+# Dépendances sans PyTorch
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pymupdf==1.23.8
+
+# ChromaDB avec embeddings ONNX
+chromadb==0.4.18
+
+# ONNX Runtime pour les embeddings (remplace PyTorch)
+onnxruntime==1.16.3
+
+# Sentence Transformers (utilisera ONNX au lieu de PyTorch)
+sentence-transformers==2.2.2
+
+# Dépendances pour Sentence Transformers sans PyTorch
+transformers==4.35.0
+tokenizers==0.15.0
+huggingface-hub==0.19.4

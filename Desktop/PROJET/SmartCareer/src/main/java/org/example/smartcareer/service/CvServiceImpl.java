@@ -65,10 +65,13 @@ public class CvServiceImpl implements CvService {
             Path filePath = uploadPath.resolve(fileName);
             Files.write(filePath, file.getBytes());
 
+            // Utiliser le chemin ABSOLU pour que le service IA puisse trouver le fichier
+            String absolutePath = filePath.toAbsolutePath().toString();
+            System.out.println("📁 Fichier sauvegardé: " + absolutePath);
           
             Cv cv = new Cv();
             cv.setFileName(fileName);
-            cv.setFilePath(filePath.toString());
+            cv.setFilePath(absolutePath);  // CHEMIN ABSOLU
             cv.setUploadDate(LocalDateTime.now());
             cv.setUserId(userId);
 
@@ -85,9 +88,16 @@ public class CvServiceImpl implements CvService {
     }
 
     private void analyzeCv(Cv cv) {
+        System.out.println("🔄 Début de l'analyse du CV ID: " + cv.getId());
+        System.out.println("   Fichier: " + cv.getFilePath());
+        
         try {
             String filePath = cv.getFilePath();
 
+            // ÉTAPE 1: EXTRACTION
+            System.out.println("1️⃣ Extraction du texte...");
+            System.out.println("   URL: " + aiExtractUrl);
+            
             CvExtractRequest extractReq = new CvExtractRequest();
             extractReq.setFile_path(filePath);
 
@@ -103,14 +113,19 @@ public class CvServiceImpl implements CvService {
 
             String extractedText = extractResponse.getBody().getText();
             if (extractedText == null || extractedText.isEmpty()) {
-                System.err.println("⚠️ WARNING: No text extracted from CV");
-                return;
+                throw new RuntimeException("❌ ERREUR: Aucun texte extrait du CV");
             }
+            System.out.println("   ✅ Texte extrait: " + extractedText.length() + " caractères");
 
-            CvAnalysisRequest analysisReq = new CvAnalysisRequest();
-            analysisReq.setText(extractedText);
+            // ÉTAPE 2: ANALYSE NLP
+            System.out.println("2️⃣ Analyse NLP...");
+            System.out.println("   URL: " + aiAnalyzeUrl);
+            
+            // Créer un objet JSON avec la clé "text"
+            java.util.Map<String, String> analysisReq = new java.util.HashMap<>();
+            analysisReq.put("text", extractedText);
 
-            HttpEntity<CvAnalysisRequest> analysisEntity = new HttpEntity<>(analysisReq, headers);
+            HttpEntity<java.util.Map<String, String>> analysisEntity = new HttpEntity<>(analysisReq, headers);
             ResponseEntity<CvAnalysisResponse> analysisResponse = restTemplate.postForEntity(
                     aiAnalyzeUrl,
                     analysisEntity,
@@ -119,10 +134,14 @@ public class CvServiceImpl implements CvService {
 
             CvAnalysisResponse analysisRes = analysisResponse.getBody();
             if (analysisRes == null) {
-                System.err.println("⚠️ WARNING: No analysis result received");
-                return;
+                throw new RuntimeException("❌ ERREUR: Aucun résultat d'analyse reçu");
             }
+            System.out.println("   ✅ Analyse terminée");
 
+           
+            System.out.println("3️⃣ Vectorisation...");
+            System.out.println("   URL: " + aiVectorizeUrl);
+            
             CvVectorizationRequest vectorReq = new CvVectorizationRequest();
             vectorReq.setCvId(cv.getId());
             vectorReq.setText(extractedText);
@@ -135,33 +154,40 @@ public class CvServiceImpl implements CvService {
             );
 
             CvAnalysisResponse vectorRes = vectorResponse.getBody();
-            if (vectorRes == null) {
-                System.err.println("⚠️ WARNING: No vectorization result received");
-                return;
+            if (vectorRes == null || vectorRes.getChromaId() == null) {
+                throw new RuntimeException("❌ ERREUR: Vectorisation échouée - ChromaID manquant");
             }
+            System.out.println("   ✅ Vectorisation terminée: " + vectorRes.getChromaId());
 
-         
+        
+            System.out.println("4️⃣ Sauvegarde en base de données...");
             CvAnalysis result = new CvAnalysis();
             result.setCvId(cv.getId());
             result.setUserId(cv.getUserId());
             
             if (analysisRes.getSkills() != null) {
                 result.setExtractedSkills(String.join(",", analysisRes.getSkills()));
+                System.out.println("   Compétences: " + analysisRes.getSkills().size());
             }
             if (analysisRes.getEducation() != null) {
                 result.setExtractedEducation(String.join(",", analysisRes.getEducation()));
+                System.out.println("   Formations: " + analysisRes.getEducation().size());
             }
             if (analysisRes.getExperiences() != null) {
                 result.setExtractedExperience(String.join(",", analysisRes.getExperiences()));
+                System.out.println("   Expériences: " + analysisRes.getExperiences().size());
             }
             result.setChromaId(vectorRes.getChromaId());
 
             cvAnalysisRepository.save(result);
-            System.out.println("✅ CV analysis completed successfully for CV ID: " + cv.getId());
+            System.out.println("✅✅✅ CV ANALYSE ET VECTORISE AVEC SUCCES - ID: " + cv.getId() + " - ChromaID: " + vectorRes.getChromaId());
 
         } catch (Exception e) {
-            System.err.println("❌ ERROR analyzing CV: " + e.getMessage());
+            System.err.println("❌❌❌ ERREUR CRITIQUE lors de l'analyse du CV ID " + cv.getId());
+            System.err.println("❌ Message: " + e.getMessage());
+            System.err.println("❌ Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "N/A"));
             e.printStackTrace();
+            throw new RuntimeException("Échec de l'analyse du CV: " + e.getMessage(), e);
         }
     }
 

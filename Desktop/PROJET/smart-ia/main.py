@@ -5,6 +5,12 @@ from extraction.pdf_extractor import extract_text_from_pdf
 from nlp.cv_analyzer import analyze_text
 from vector.vectorizer import vectorize_text_and_store
 
+print("=" * 60)
+print("🚀 Service IA SmartCareer")
+print("📊 Modèle: Sentence Transformers (all-MiniLM-L6-v2)")
+print("⚡ Backend: ONNX Runtime (sans PyTorch)")
+print("=" * 60)
+
 app = FastAPI()
 
 # Configuration CORS
