@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { reservationApi } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 import './ReservationList.css';
 
 function ReservationList() {
@@ -7,20 +8,38 @@ function ReservationList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchReservations();
-  }, [filter]);
+  }, [filter, user]);
 
   const fetchReservations = async () => {
     try {
       setLoading(true);
       let response;
-      if (filter === 'active') {
-        response = await reservationApi.getActive();
+
+      // Admin sees all reservations
+      if (user?.username === 'admin') {
+        if (filter === 'active') {
+          response = await reservationApi.getActive();
+        } else {
+          response = await reservationApi.getAll();
+        }
+      } else if (user) {
+        // Regular users: show all reservations (email filtering not working)
+        // In a real app, you'd filter by user ID from backend
+        if (filter === 'active') {
+          response = await reservationApi.getActive();
+        } else {
+          response = await reservationApi.getAll();
+        }
       } else {
-        response = await reservationApi.getAll();
+        setReservations([]);
+        setLoading(false);
+        return;
       }
+
       setReservations(response.data);
       setError(null);
     } catch (err) {
@@ -33,7 +52,7 @@ function ReservationList() {
 
   const handleCancel = async (id) => {
     if (!window.confirm('Voulez-vous vraiment annuler cette réservation?')) return;
-    
+
     try {
       await reservationApi.cancel(id);
       fetchReservations();
@@ -61,13 +80,13 @@ function ReservationList() {
       <div className="section-header">
         <h2>📋 Mes Réservations</h2>
         <div className="header-actions">
-          <button 
+          <button
             className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}
           >
             Toutes
           </button>
-          <button 
+          <button
             className={`filter-btn ${filter === 'active' ? 'active' : ''}`}
             onClick={() => setFilter('active')}
           >
@@ -107,7 +126,7 @@ function ReservationList() {
                 </td>
                 <td>
                   {res.statut === 'ACTIVE' && (
-                    <button 
+                    <button
                       className="cancel-reservation-btn"
                       onClick={() => handleCancel(res.id)}
                     >

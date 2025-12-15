@@ -1,17 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { reservationApi, notificationApi } from '../api/api';
+import { useAuth } from '../context/AuthContext';
 import './ReservationForm.css';
 
 function ReservationForm({ selectedSpot, onReservationComplete, onCancel }) {
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
-    nomClient: '',
-    email: '',
+    nomClient: user?.username || '',
+    email: user?.email || '',
     telephone: '',
     dateDebut: '',
     dateFin: ''
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+
+  // Update form when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        nomClient: user.username || prev.nomClient,
+        email: user.email || prev.email
+      }));
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -24,7 +38,7 @@ function ReservationForm({ selectedSpot, onReservationComplete, onCancel }) {
     try {
       setLoading(true);
       setMessage(null);
-      
+
       const reservation = {
         parkingSpotId: selectedSpot.id,
         nomClient: formData.nomClient,
@@ -36,7 +50,7 @@ function ReservationForm({ selectedSpot, onReservationComplete, onCancel }) {
       };
 
       await reservationApi.create(reservation);
-      
+
       // Envoyer email de confirmation
       try {
         await notificationApi.sendConfirmation({
@@ -49,10 +63,10 @@ function ReservationForm({ selectedSpot, onReservationComplete, onCancel }) {
       } catch (notifErr) {
         console.log('Notification non envoyée:', notifErr);
       }
-      
+
       setMessage({ type: 'success', text: 'Réservation créée avec succès! Un email de confirmation a été envoyé.' });
       setFormData({ nomClient: '', email: '', telephone: '', dateDebut: '', dateFin: '' });
-      
+
       setTimeout(() => {
         onReservationComplete();
       }, 1500);
@@ -76,7 +90,7 @@ function ReservationForm({ selectedSpot, onReservationComplete, onCancel }) {
   return (
     <div className="reservation-form">
       <h2>📝 Nouvelle Réservation</h2>
-      
+
       <div className="selected-spot">
         <h3>Place sélectionnée: {selectedSpot.numeroPlace}</h3>
         <p>{selectedSpot.emplacement}</p>
